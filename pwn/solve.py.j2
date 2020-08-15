@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+from pwn import *
+import argparse
+import monkeyhex
+
+context.log_level = 'debug'
+context.arch = 'amd64'
+context.terminal = ['termite', '-e']
+
+LIBC_PATH = '{{ libc_path }}'
+
+## CODE HERE
+
+def attach_gdb(p, commands=None):
+    """Template to run gdb with predefined commands on a process."""
+    val = """
+    """ if commands is None else commands
+    return gdb.attach(p, val)
+
+
+def new_proc(start_gdb=False, val=None):
+    """Start a new process with predefined debug operations / specific libc"""
+    p = process(['{{ binary_path }}'])  # , env={'LD_LIBRARY_PATH': LIBC_PATH})
+    if start_gdb is True:
+        attach_gdb(p)
+    return p
+
+
+def main(args):
+    binary = ELF('{{ binary_path }}')
+
+    p = new_proc() if (args.local | args.debug) is True else remote('{{ remote_host }}', args.port)
+    # do leak / payload gen here
+
+    payload = b''
+    if args.debug is True:
+        attach_gdb(p)
+    p.sendline(payload)
+    if args.debug is True:
+        import ipdb as pdb; pdb.set_trace()
+
+    # p.interactive()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', '-d', action='store_true', default=False, help='Enable debug optioins')
+    parser.add_argument('--local', '-l', action='store_true', default=False, help='Run bin locally')
+    parser.add_argument('--port', '-p', type=int, default=0, help='Port to run this script on')
+    parser.add_argument('--libc', default=LIBC_PATH, help='Path of libc to load')
+    args = parser.parse_args()
+    # default to local run if no specific options are set
+    args.local = args.local | args.debug | bool(args.port == 0)
+    LIBC_PATH = args.libc
+    main(args)
+
+
+
+
+

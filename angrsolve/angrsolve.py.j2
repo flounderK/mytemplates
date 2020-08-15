@@ -1,0 +1,12 @@
+
+import angr
+import claripy
+import monkeyhex
+
+
+project = angr.Project('{{ binary_path }}')
+
+# initial_state = project.factory.blank_state(addr={{ start_addr }})
+initial_state = project.factory.entry_state()
+simgr = project.factory.simgr(initial_state)
+
