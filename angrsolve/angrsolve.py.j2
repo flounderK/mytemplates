@@ -6,7 +6,20 @@ import monkeyhex
 
 project = angr.Project('{{ binary_path }}')
 
-# initial_state = project.factory.blank_state(addr={{ start_addr }})
-initial_state = project.factory.entry_state()
+{% if ASCIIONLY is defined -%}
+def ascii_only_constraint(variable, state):
+	for b in variable.chop(8):
+		state.add_constraint(claripy.And(b >= 0x20, b < 0x7f))
+{%- endif %}
+kwargs = {}
+{% if STDIN is defined -%}
+buf_len = 16
+stdin_bvs = claripy.BVS('stdin_bvs', buf_len*8)
+kwargs['stdin'] = stdin_bvs
+{%- endif %}
+{% if start_addr is defined -%}
+kwargs['addr'] = {{ start_addr | int| hex }}
+{%- endif %}
+initial_state = project.factory.{{ 'entry_state' if start_addr is not defined else 'blank_state'}}(**kwargs)
 simgr = project.factory.simgr(initial_state)
 
