@@ -21,5 +21,30 @@ kwargs['stdin'] = stdin_bvs
 kwargs['addr'] = {{ start_addr | int| hex }}
 {%- endif %}
 initial_state = project.factory.{{ 'entry_state' if start_addr is not defined else 'blank_state'}}(**kwargs)
-simgr = project.factory.simgr(initial_state)
+{% if SYM_STACK is defined -%}
+initial_state.regs.rbp = initial_state.regs.rsp
+buf_len = 16
+stack_var0 = claripy.BVS('stack_var0', buf_len*8)
+padding_length_in_bytes = buf_len
+initial_state.regs.rsp -= padding_length_in_bytes
+
+initial_state.stack_push(stack_var0)
+{%- endif %}
+
+
+def is_successful(state):
+	stdout_output = state.posix.dumps(1)
+	return stdout_output.find(b'Success') > -1
+
+def should_abort(state):
+	stdout_output = state.posix.dumps(1)
+	return stdout_output.find(b'Failure') > -1
+
+
+simgr_kwargs = {}
+{% if UNCONSTRAINED is defined -%}
+simgr_kwargs['save_unconstrained'] = True
+{%- endif %}
+simgr = project.factory.simgr(initial_state, **simgr_kwargs)
+simgr.explore(find=is_successful, avoid=should_abort)
 
