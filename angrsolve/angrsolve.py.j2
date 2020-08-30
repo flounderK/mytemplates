@@ -9,9 +9,15 @@ project = angr.Project('{{ binary_path }}')
 {% if ASCIIONLY is defined -%}
 def ascii_only_constraint(variable, state):
 	for b in variable.chop(8):
-		state.add_constraint(claripy.And(b >= 0x20, b < 0x7f))
+		state.add_constraints(claripy.And(b >= 0x20, b < 0x7f))
 {%- endif %}
 kwargs = {}
+
+simgr_kwargs = {}
+{% if UNCONSTRAINED is defined -%}
+simgr_kwargs['save_unconstrained'] = True
+kwargs['add_options'] = {angr.sim_options.REVERSE_MEMORY_NAME_MAP, angr.sim_options.TRACK_ACTION_HISTORY}
+{%- endif %}
 {% if STDIN is defined -%}
 buf_len = 16
 stdin_bvs = claripy.BVS('stdin_bvs', buf_len*8)
@@ -31,7 +37,6 @@ initial_state.regs.rsp -= padding_length_in_bytes
 initial_state.stack_push(stack_var0)
 {%- endif %}
 
-
 def is_successful(state):
 	stdout_output = state.posix.dumps(1)
 	return stdout_output.find(b'Success') > -1
@@ -41,10 +46,6 @@ def should_abort(state):
 	return stdout_output.find(b'Failure') > -1
 
 
-simgr_kwargs = {}
-{% if UNCONSTRAINED is defined -%}
-simgr_kwargs['save_unconstrained'] = True
-{%- endif %}
 simgr = project.factory.simgr(initial_state, **simgr_kwargs)
 simgr.explore(find=is_successful, avoid=should_abort)
 
