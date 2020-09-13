@@ -4,7 +4,15 @@ import claripy
 import monkeyhex
 
 
-project = angr.Project('{{ binary_path }}')
+project_kwargs = dict()
+project_kwargs['auto_load_libs'] =  {{ 'True' if AUTO_LOAD_LIBS is defined else 'False' }}
+{% if USE_SIMPROCS is defined -%}
+project_kwargs['use_sim_procedures'] = True
+{%- endif %}
+project = angr.Project('{{ binary_path }}', **project_kwargs)
+{% if CFG is defined -%}
+cfg = project.analyses.CFG()
+{%- endif %}
 
 {% if ASCIIONLY is defined -%}
 def ascii_only_constraint(variable, state):
