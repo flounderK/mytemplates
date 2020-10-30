@@ -5,7 +5,7 @@ import monkeyhex
 context.log_level = 'debug'
 context.terminal = ['termite', '-e']
 
-lib = ELF('/usr/lib/libc.so.6') if args.LOCAL else ELF('{{ libc_path }}')
+lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path }}')
 binary = context.binary = ELF('{{ binary_path }}')
 
 def attach_gdb(p, commands=None):
@@ -22,7 +22,7 @@ def new_proc(start_gdb=False, val=None):
         attach_gdb(p)
     return p
 
-p = new_proc() if args.LOCAL else remote('{{ remote_host }}', int('{{ port }}'))
+p = new_proc() if not args.REMOTE else remote('{{ remote_host }}', int('{{ port }}'))
 # do leak / payload gen here
 
 payload = b''
