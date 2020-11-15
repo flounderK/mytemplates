@@ -1,11 +1,11 @@
-
+/usr/bin/env pypy3
 import angr
 import claripy
 import monkeyhex
 
 
 project_kwargs = dict()
-project_kwargs['auto_load_libs'] =  {{ 'True' if AUTO_LOAD_LIBS is defined else 'False' }}
+project_kwargs['auto_load_libs'] = {{ 'True' if AUTO_LOAD_LIBS is defined else 'False' }}
 {% if USE_SIMPROCS is defined -%}
 project_kwargs['use_sim_procedures'] = True
 {%- endif %}
@@ -16,8 +16,8 @@ cfg = project.analyses.CFG()
 
 {% if ASCIIONLY is defined -%}
 def ascii_only_constraint(variable, state):
-	for b in variable.chop(8):
-		state.add_constraints(claripy.And(b >= 0x20, b < 0x7f))
+    for b in variable.chop(8):
+        state.add_constraints(claripy.And(b >= 0x20, b < 0x7f))
 {%- endif %}
 kwargs = {}
 
@@ -46,12 +46,12 @@ initial_state.stack_push(stack_var0)
 {%- endif %}
 
 def is_successful(state):
-	stdout_output = state.posix.dumps(1)
-	return stdout_output.find(b'Success') > -1
+    stdout_output = state.posix.dumps(1)
+    return stdout_output.find(b'Success') > -1
 
 def should_abort(state):
-	stdout_output = state.posix.dumps(1)
-	return stdout_output.find(b'Failure') > -1
+    stdout_output = state.posix.dumps(1)
+    return stdout_output.find(b'Failure') > -1
 
 
 simgr = project.factory.simgr(initial_state, **simgr_kwargs)
