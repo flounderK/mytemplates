@@ -20,7 +20,9 @@ def attach_gdb(p, commands=None):
 
 def new_proc(start_gdb=False, val=None):
     """Start a new process with predefined debug operations"""
-    p = process(binary.path)
+    env = dict()
+    # env['LD_PRELOAD'] = './libc.so.6'
+    p = process(binary.path, env=env)
     if start_gdb is True:
         attach_gdb(p, val)
     return p
