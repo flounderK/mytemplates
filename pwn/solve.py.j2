@@ -3,7 +3,7 @@ from pwn import *
 import monkeyhex
 
 context.log_level = 'debug'
-context.terminal = ['termite', '-e']
+# context.terminal = ['termite', '-e']
 
 # lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path }}')
 binary = context.binary = ELF('{{ binary_path }}')
