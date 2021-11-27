@@ -1,9 +1,19 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 from pwn import *
 import monkeyhex
+import time
+import argparse
+from functools import partial
+import logging
 
-context.log_level = 'debug'
-# context.terminal = ['termite', '-e']
+# Run with ipython3 -i solve.py -- DEBUG <one_gadget>
+
+parser = argparse.ArgumentParser()
+parser.add_argument("one_gadget", type=partial(int, base=0), nargs=argparse.REMAINDER)
+argparse_args = parser.parse_args()
+
+# context.log_level = 'debug'
+context.terminal = ['gnome-terminal', '-e']
 
 # lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path }}')
 binary = context.binary = ELF('{{ binary_path }}')
@@ -27,7 +37,14 @@ def new_proc(start_gdb=False, val=None):
         attach_gdb(p, val)
     return p
 
-p = new_proc(False) if not args.REMOTE else remote('{{ remote_host }}', int('{{ port }}'))
+
+def batch(it, sz):
+    length = len(it)
+    for i in range(0, length, sz):
+        yield it[i:i+sz]
+
+
+p = new_proc(context.log_level == logging.DEBUG) if not args.REMOTE else remote('{{ remote_host }}', int('{{ port }}'))
 # do leak / payload gen here
 
 payload = b''
