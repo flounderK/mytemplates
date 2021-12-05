@@ -3,6 +3,7 @@ from pwn import *
 import monkeyhex
 import time
 import argparse
+import re
 from functools import partial
 import logging
 
@@ -16,6 +17,8 @@ argparse_args = parser.parse_args()
 context.terminal = ['gnome-terminal', '-e']
 
 # lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path }}')
+# lib.sym['binsh'] = lib.offset_to_vaddr(lib.data.find(b'/bin/sh'))
+# lib.sym['one_gadget'] = argparse_args.one_gadget
 binary = context.binary = ELF('{{ binary_path }}')
 
 def attach_gdb(p, commands=None):
@@ -32,11 +35,19 @@ def new_proc(start_gdb=False, val=None):
     """Start a new process with predefined debug operations"""
     env = dict()
     # env['LD_PRELOAD'] = './libc.so.6'
+    # env['LD_LIBRARY_PATH'] = os.getcwd()
+    # patchelf --set-interpreter "$(ls ld-*.so)" {{ binary_path }}
+    # ln -s libc-*.so libc.so.6
     p = process(binary.path, env=env)
     if start_gdb is True:
         attach_gdb(p, val)
     return p
 
+def bnot(n, numbits=context.bits):
+    return (1 << numbits) -1 -n
+
+def align(val, align_to):
+    return val & bnot(align_to - 1)
 
 def batch(it, sz):
     length = len(it)
@@ -49,3 +60,4 @@ p = new_proc(context.log_level == logging.DEBUG) if not args.REMOTE else remote(
 
 payload = b''
 
+# p.interactive()
