@@ -16,7 +16,7 @@ argparse_args = parser.parse_args()
 # context.log_level = 'debug'
 context.terminal = ['gnome-terminal', '-e']
 
-# lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path }}')
+# lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
 # lib.sym['binsh'] = lib.offset_to_vaddr(lib.data.find(b'/bin/sh'))
 # lib.sym['one_gadget'] = argparse_args.one_gadget
 binary = context.binary = ELF('{{ binary_path }}')
@@ -34,7 +34,6 @@ def attach_gdb(p, commands=None):
 def new_proc(start_gdb=False, val=None):
     """Start a new process with predefined debug operations"""
     env = dict()
-    # env['LD_PRELOAD'] = './libc.so.6'
     # env['LD_LIBRARY_PATH'] = os.getcwd()
     # patchelf --set-interpreter "$(ls ld-*.so)" {{ binary_path }}
     # ln -s libc-*.so libc.so.6
@@ -54,10 +53,39 @@ def batch(it, sz):
     for i in range(0, length, sz):
         yield it[i:i+sz]
 
+def bof_check():
+    """Check a local process for easy to detect
+    buffer overflow"""
+    if hasattr(p, "proc") is False:
+        return 0, None
+    if p.poll() is None or p.poll() >= 0:
+        return 0, None
 
-p = new_proc(context.log_level == logging.DEBUG) if not args.REMOTE else remote('{{ remote_host }}', int('{{ port }}'))
+    c = p.corefile
+    log.success("Fault addr %#x", c.fault_addr)
+    rsp_offset = c.sp - c.stack.address
+    data_at_rsp_offset = c.stack.data[rsp_offset:rsp_offset+context.bytes]
+    code_near_pc = c.disasm(c.pc, 16)
+    on_ret_instr = False
+    if len(code_near_pc) > 0:
+        current_instr_ln = code_near_pc.splitlines()[0]
+        on_ret_instr = bool(re.search('(?i)RET', current_instr_ln))
+    log.success("data at rsp %s", data_at_rsp_offset)
+    offset = cyclic_find(data_at_rsp_offset[:4])
+    if (offset != -1 or c.fault_addr == data_at_rsp_offset) \
+       and on_ret_instr is True:
+        log.success("Looks like the next return address was overwritten!")
+        log.success("offset %#x", offset)
+        # for i in c.registers.items():
+        #     log.success("%s: %#x" % (i))
+    return offset, c
+
+
+
+p = new_proc(context.log_level == logging.DEBUG) if not args.REMOTE else remote('{{ remote_host|d("localhost", true) }}', {{ port|d(8000, true) }})
 # do leak / payload gen here
 
 payload = b''
 
+# p.send(cyclic(0x200) + b'\n')
 # p.interactive()
