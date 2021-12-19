@@ -52,7 +52,7 @@ def batch(it, sz):
     length = len(it)
     for i in range(0, length, sz):
         yield it[i:i+sz]
-
+{% if BOF_CHECK is defined -%}
 def bof_check():
     """Check a local process for easy to detect
     buffer overflow"""
@@ -80,12 +80,49 @@ def bof_check():
         #     log.success("%s: %#x" % (i))
     return offset, c
 
-
-
+{%- endif %}
 p = new_proc(context.log_level == logging.DEBUG) if not args.REMOTE else remote('{{ remote_host|d("localhost", true) }}', {{ port|d(8000, true) }})
 # do leak / payload gen here
 
 payload = b''
+{% if JOP is defined -%}
+# just to track which gadgets are actually being used
+used_dt_gadgets = set()
 
+# table of gadget addresses
+dispatch_table = [
+    b'/bin/sh\x00',  # only allowed because is 8 bytes
+    # dispatch gadget here
+
+]
+
+# start of controlled input (needs leak)
+stack_loc = 0
+
+# index where the dispatch table may not extend past
+dispatch_table_limit = 0xb0
+# offset of dispatch table from start of input
+dispatch_table_offset = dispatch_table_limit - (len(dispatch_table)*8)
+# dispatch_table_addr on stack
+dta = stack_loc + dispatch_table_offset
+
+
+def dta_for(gadget):
+    """Just to make payload more readable,
+    because actual instr has to be an address that contains
+    the address of a gadget ('jmp rdx' vs 'jmp [rdx]')"""
+    # convert gadget symbol name to address
+    if isinstance(gadget, str):
+        gadget = binary.sym[gadget]
+
+    used_dt_gadgets.add(gadget)
+    return dta + (dispatch_table.index(gadget)*8)
+
+
+payload = flat({
+    # dispatch table
+    dispatch_table_offset: dispatch_table
+})
+{%- endif %}
 # p.send(cyclic(0x200) + b'\n')
 # p.interactive()
