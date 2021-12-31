@@ -16,9 +16,10 @@ argparse_args = parser.parse_args()
 # context.log_level = 'debug'
 context.terminal = ['gnome-terminal', '-e']
 
-# lib = ELF('/usr/lib/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
+# default libc path for some dists is /usr/lib/libc.so.6
+# lib = ELF('/lib/x86_64-linux-gnu/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
 # lib.sym['binsh'] = lib.offset_to_vaddr(lib.data.find(b'/bin/sh'))
-# lib.sym['one_gadget'] = argparse_args.one_gadget
+# lib.sym['one_gadget'] = argparse_args.one_gadget[0] if argparse_args.one_gadget else 0
 binary = context.binary = ELF('{{ binary_path }}')
 
 def attach_gdb(p, commands=None):
