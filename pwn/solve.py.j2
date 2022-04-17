@@ -4,6 +4,7 @@ import monkeyhex
 import time
 import argparse
 import re
+import os
 from functools import partial
 import logging
 
@@ -32,13 +33,17 @@ def attach_gdb(p, commands=None):
     return res
 
 
-def new_proc(start_gdb=False, val=None):
+def new_proc(start_gdb=False, val=None, preload_libc=False, force_unbuffered=False):
     """Start a new process with predefined debug operations"""
-    env = dict()
-    # env['LD_LIBRARY_PATH'] = os.getcwd()
-    # patchelf --set-interpreter "$(ls ld-*.so)" {{ binary_path }}
-    # ln -s libc-*.so libc.so.6
-    p = process(binary.path, env=env)
+    kwargs = {}
+    if preload_libc is True:
+        env = os.environ.copy()
+        kwargs['env']['LD_LIBRARY_PATH'] = os.getcwd()
+    if force_unbuffered is True:
+        kwargs['stdin'] = process.PTY
+        kwargs['stdout'] = process.PTY
+
+    p = process(binary.path, **kwargs)
     if start_gdb is True:
         attach_gdb(p, val)
     return p
