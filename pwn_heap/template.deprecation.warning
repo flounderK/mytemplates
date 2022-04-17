@@ -1,0 +1,1 @@
+The scripts in this template have been deprecated and superceded by an update to the normal pwn template. Patching a binary to use compatible ld and libc versions can now be accomplished with https://github.com/flounderK/ElfLibFixup alongside libc-database.
