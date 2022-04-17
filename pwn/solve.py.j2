@@ -17,11 +17,36 @@ argparse_args = parser.parse_args()
 # context.log_level = 'debug'
 context.terminal = ['gnome-terminal', '-e']
 
-# default libc path for some dists is /usr/lib/libc.so.6
-# lib = ELF('/lib/x86_64-linux-gnu/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
-# lib.sym['binsh'] = lib.offset_to_vaddr(lib.data.find(b'/bin/sh'))
-# lib.sym['one_gadget'] = argparse_args.one_gadget[0] if argparse_args.one_gadget else 0
+_CACHED_LIBC_PATH = None
+def get_preloadable_libc(path=None, libc_paths=[]):
+    global _CACHED_LIBC_PATH
+    if _CACHED_LIBC_PATH is not None:
+        return _CACHED_LIBC_PATH
+    if path is None:
+        path = os.getcwd()
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            # match common libc-2.31.so and libc.so.6 formats
+            match = re.search(r'libc(\.so\.6|-\d+\.\d+\.so)', f)
+            if match is not None:
+                libc_paths.append(os.path.join(root, f))
+
+    if len(libc_paths) > 0:
+        return libc_paths[0]
+    return None
+
+# this variable will be filled in with an `ELF` object if
+# there is a libc in the same directory as (or child directories of) the script
+libc = None
+script_directory = os.path.dirname(os.path.abspath(__file__))
+LIBC_PATH = get_preloadable_libc(path=script_directory)
+if libc is None:
+    libc = ELF(LIBC_PATH)
+    libc.sym['binsh'] = libc.offset_to_vaddr(libc.data.find(b'/bin/sh'))
+    # libc.sym['one_gadget'] = argparse_args.one_gadget[0] if argparse_args.one_gadget else 0
+# libc = ELF('/lib/x86_64-linux-gnu/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
 binary = context.binary = ELF('{{ binary_path }}')
+
 
 def attach_gdb(p, commands=None):
     """Template to run gdb with predefined commands on a process."""
@@ -33,12 +58,15 @@ def attach_gdb(p, commands=None):
     return res
 
 
-def new_proc(start_gdb=False, val=None, preload_libc=False, force_unbuffered=False):
+def new_proc(start_gdb=False, val=None, force_unbuffered=False, skip_libc_preload=False):
     """Start a new process with predefined debug operations"""
     kwargs = {}
-    if preload_libc is True:
-        env = os.environ.copy()
-        kwargs['env']['LD_LIBRARY_PATH'] = os.getcwd()
+    # if there is a libc in the current directory
+    global LIBC_PATH
+    if skip_libc_preload is False:
+        if LIBC_PATH is not None:
+            kwargs['env'] = {}
+            kwargs['env']['LD_PRELOAD'] = LIBC_PATH
     if force_unbuffered is True:
         kwargs['stdin'] = process.PTY
         kwargs['stdout'] = process.PTY
