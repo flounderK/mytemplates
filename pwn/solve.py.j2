@@ -58,7 +58,9 @@ def attach_gdb(p, commands=None):
     return res
 
 
-def new_proc(start_gdb=False, val=None, force_unbuffered=False, skip_libc_preload=False):
+def new_proc(start_gdb=False, val=None, force_unbuffered=False,
+             skip_libc_preload=False,
+             preload_libs=None):
     """Start a new process with predefined debug operations"""
     kwargs = {}
     # if there is a libc in the current directory
@@ -67,6 +69,18 @@ def new_proc(start_gdb=False, val=None, force_unbuffered=False, skip_libc_preloa
         if LIBC_PATH is not None:
             kwargs['env'] = {}
             kwargs['env']['LD_PRELOAD'] = LIBC_PATH
+    if preload_libs:
+        cwd = os.getcwd()
+        preload_libs = [os.path.join(cwd, i) if not i.startswith("/") else i
+                        for i in preload_libs]
+        ld_preload = kwargs['env'].get('LD_PRELOAD')
+        if ld_preload:
+            ld_preload = ld_preload.split(" ")
+        else:
+            ld_preload = []
+        ld_preload.extend(preload_libs)
+        kwargs['env']['LD_PRELOAD'] = " ".join(ld_preload)
+
     if force_unbuffered is True:
         kwargs['stdin'] = process.PTY
         kwargs['stdout'] = process.PTY
