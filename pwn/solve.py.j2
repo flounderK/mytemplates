@@ -99,10 +99,37 @@ def bnot(n, numbits=context.bits):
 def align(val, align_to):
     return val & bnot(align_to - 1)
 
+def align_up(val, align_to):
+    aligned = align(val, align_to)
+    if aligned < val:
+        aligned += align_to
+    return aligned
+
 def batch(it, sz):
     length = len(it)
     for i in range(0, length, sz):
         yield it[i:i+sz]
+
+def group_by_increment(iterable, group_incr):
+    """
+    Identify series of values that increment/decrement
+    by the same amount, grouping them into lists.
+    Useful for finding heap chunks next to eachother
+    from large leaks
+    """
+    grouped = []
+    current = [iterable[0]]
+    for i in range(1, len(iterable)):
+        curr_val = iterable[i]
+        prev_val = current[-1]
+        if (prev_val + group_incr) == curr_val:
+            current.append(curr_val)
+        else:
+            grouped.append(current)
+            current = [curr_val]
+    if current:
+        grouped.append(current)
+    return grouped
 {% if BOF_CHECK is defined -%}
 def bof_check():
     """Check a local process for easy to detect
