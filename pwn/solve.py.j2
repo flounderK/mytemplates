@@ -96,11 +96,11 @@ def new_proc(start_gdb=False, val=None, force_unbuffered=False,
 def bnot(n, numbits=context.bits):
     return (1 << numbits) -1 -n
 
-def align(val, align_to):
-    return val & bnot(align_to - 1)
+def align(val, align_to, numbits=context.bits):
+    return val & bnot(align_to - 1, numbits)
 
-def align_up(val, align_to):
-    aligned = align(val, align_to)
+def align_up(val, align_to, numbits=context.bits):
+    aligned = align(val, align_to, numbits)
     if aligned < val:
         aligned += align_to
     return aligned
