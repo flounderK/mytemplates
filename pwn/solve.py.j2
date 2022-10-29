@@ -93,6 +93,16 @@ def new_proc(start_gdb=False, val=None, force_unbuffered=False,
         attach_gdb(p, val)
     return p
 
+def uniquish_char():
+    """Track order of arbitrary inputs in a more systematic way.
+    use like: CHAR_GEN = uniquish_char()
+    p.send(next(CHAR_GEN)*10)
+    """
+    for i in string.ascii_letters:
+        yield i.encode()
+
+CHAR_GEN = uniquish_char()
+
 def bnot(n, numbits=context.bits):
     return (1 << numbits) -1 -n
 
@@ -130,6 +140,23 @@ def group_by_increment(iterable, group_incr):
     if current:
         grouped.append(current)
     return grouped
+
+SIZE_SZ = context.bytes
+MALLOC_ALIGNMENT = SIZE_SZ*2
+MALLOC_ALIGN_MASK = MALLOC_ALIGNMENT - 1
+MIN_CHUNK_SIZE = SIZE_SZ*4
+MINSIZE = (MIN_CHUNK_SIZE+MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
+def calc_chunksize(x):
+    if (x + SIZE_SZ + MALLOC_ALIGN_MASK) < MINSIZE:
+        chunksize = MINSIZE
+    else:
+        chunksize = (x + SIZE_SZ + MALLOC_ALIGN_MASK) & ~MALLOC_ALIGN_MASK
+    return chunksize
+
+def calc_tcache_idx(x):
+    CHUNKSIZE = calc_chunksize(x)
+    IDX = (CHUNKSIZE - MINSIZE + MALLOC_ALIGNMENT - 1) // MALLOC_ALIGNMENT
+    return IDX
 {% if BOF_CHECK is defined -%}
 def bof_check():
     """Check a local process for easy to detect
