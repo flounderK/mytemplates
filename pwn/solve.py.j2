@@ -42,7 +42,10 @@ script_directory = os.path.dirname(os.path.abspath(__file__))
 LIBC_PATH = get_preloadable_libc(path=script_directory)
 if libc is None and LIBC_PATH is not None:
     libc = ELF(LIBC_PATH)
-    libc.sym['binsh'] = libc.offset_to_vaddr(libc.data.find(b'/bin/sh'))
+    binsh_offset = libc.data.find(b'/bin/sh')
+    if binsh_offset != -1:
+        libc.sym['binsh'] = libc.offset_to_vaddr(binsh_offset)
+
     # libc.sym['one_gadget'] = argparse_args.one_gadget[0] if argparse_args.one_gadget else 0
 # libc = ELF('/lib/x86_64-linux-gnu/libc.so.6') if not args.REMOTE else ELF('{{ libc_path|d('libc.so.6', true) }}')
 binary = context.binary = ELF('{{ binary_path }}')
