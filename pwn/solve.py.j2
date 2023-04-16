@@ -160,6 +160,10 @@ def calc_tcache_idx(x):
     CHUNKSIZE = calc_chunksize(x)
     IDX = (CHUNKSIZE - MINSIZE + MALLOC_ALIGNMENT - 1) // MALLOC_ALIGNMENT
     return IDX
+
+def reveal_ptr(ptr_addr: int, ptr: int) -> int:
+    """unmask heap pointer after glibc 2.32"""
+    return ptr_addr >> 12 ^ ptr
 {% if BOF_CHECK is defined -%}
 def bof_check():
     """Check a local process for easy to detect
